@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os/exec"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -19,6 +21,25 @@ type Container struct {
 	Status  string       `json:"status"`
 	Ports   []types.Port `json:"ports"`
 	Names   []string     `json:"names"`
+}
+
+func openBrowser(url string) {
+	// Open url in default browser
+	var err error = exec.Command("cmd.exe", "/c", "start", url).Start()
+
+	// switch runtime.GOOS {
+	// case "linux":
+	// 	err = exec.Command("xdg-open", url).Start()
+	// case "windows":
+	// 	err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	// case "darwin":
+	// 	err = exec.Command("open", url).Start()
+	// default:
+	// 	err = fmt.Errorf("unsupported platform")
+	// }
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -57,6 +78,7 @@ func main() {
 	})
 
 	fmt.Println("Listening on :8080")
+	openBrowser("http://localhost:8080/containers/json")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		fmt.Printf("Error: %s", err)
 	}
