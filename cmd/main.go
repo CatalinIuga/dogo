@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
-	"net/http"
 	"os/exec"
 
 	"github.com/docker/docker/api/types"
@@ -24,7 +21,6 @@ type Container struct {
 }
 
 func openBrowser(url string) {
-	// Open url in default browser
 	var err error = exec.Command("cmd.exe", "/c", "start", url).Start()
 
 	// switch runtime.GOOS {
@@ -44,42 +40,37 @@ func openBrowser(url string) {
 
 func main() {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+
+	dockerService, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		fmt.Printf("Error: %s", err)
+		log.Fatalf("Error: %s", err)
 	}
-	defer cli.Close()
+	defer dockerService.Close()
 
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /containers/json", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		containers, err := cli.ContainerList(ctx, container.ListOptions{
-			All: true,
-		})
-		if err != nil {
-			fmt.Printf("Error: %s", err)
-		}
-		var containerList []Container = make([]Container, len(containers))
-		for i, container := range containers {
-			containerList[i] = Container{
-				ID:      container.ID,
-				Image:   container.Image,
-				Command: container.Command,
-				Created: container.Created,
-				Status:  container.Status,
-				Ports:   container.Ports,
-				Names:   container.Names,
-			}
-		}
-
-		json.NewEncoder(w).Encode(containerList)
+	containers, err := dockerService.ContainerList(ctx, container.ListOptions{
+		All: true,
 	})
 
-	fmt.Println("Listening on :8080")
-	openBrowser("http://localhost:8080/containers/json")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
-		fmt.Printf("Error: %s", err)
+	if err != nil {
+		log.Fatalf("Error: %s", err)
 	}
+
+	var containerList []Container = make([]Container, len(containers))
+
+	for i, container := range containers {
+		containerList[i] = Container{
+			ID:      container.ID,
+			Image:   container.Image,
+			Command: container.Command,
+			Created: container.Created,
+			Status:  container.Status,
+			Ports:   container.Ports,
+			Names:   container.Names,
+		}
+	}
+
+	for _, container := range containerList {
+		log.Println(container)
+	}
+
 }
